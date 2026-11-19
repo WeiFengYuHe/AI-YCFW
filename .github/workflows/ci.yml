@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  syntax:
+    name: 语法与接口冒烟（Node ${{ matrix.node }}）
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: 语法检查
+        run: |
+          node --check server/server.mjs
+          node --check server/web/app.js
+          node --check server/lib/dsh.mjs
+          node --check server/lib/dsh2.mjs
+          node --check server/lib/dsh-local-auth.mjs
+          node --check server/lib/ws.mjs
+          node --check server/lib/zip.mjs
+          node --check server/lib/store.mjs
+          node --check bin/dsh-ycfw.mjs
+
+      - name: 起服务（临时数据目录）并验证接口
+        run: |
+          node bin/dsh-ycfw.mjs --port 8199 --no-open --home "$RUNNER_TEMP/ycfw" &
+          for i in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:8199/api/health >/dev/null; then break; fi
+            sleep 0.5
+          done
+          curl -sf http://127.0.0.1:8199/api/health | tee /dev/stderr | grep -q '"ok":true'
+          # 登录 → 连接列表 → 添加/删除
+          PW=$(node -e "const f=require('fs').readFileSync(process.env.RUNNER_TEMP+'/ycfw/config.json','utf8');console.log(JSON.parse(f).auth.password)")
+          curl -sf -c /tmp/ck -H 'Content-Type: application/json' -d "{\"password\":\"$PW\"}" http://127.0.0.1:8199/api/login
+          curl -sf -b /tmp/ck http://127.0.0.1:8199/api/me | grep -q connections
+          ID=$(curl -sf -b /tmp/ck -H 'Content-Type: application/json' \
+               -d '{"name":"t","kind":"openai","baseUrl":"http://127.0.0.1:1/v1","model":"m"}' \
+               http://127.0.0.1:8199/api/connections | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).connection.id))")
+          curl -sf -b /tmp/ck -X DELETE "http://127.0.0.1:8199/api/connections/$ID" | grep -q '"ok":true'
+          echo OK
