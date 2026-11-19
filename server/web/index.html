@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#4d6bfe">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="AI 对话">
+<meta name="mobile-web-app-capable" content="yes">
+<title>AI 对话</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<!-- ======================= 登录 ======================= -->
+<div id="login" class="login hidden">
+  <div class="login-card">
+    <div class="brand-mark">
+      <svg viewBox="0 0 48 48" width="56" height="56" aria-hidden="true">
+        <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#g1)"/>
+        <path d="M14 18h20a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H23l-6 5v-5h-3a3 3 0 0 1-3-3v-8a3 3 0 0 1 3-3z" fill="#fff"/>
+        <defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#5b78ff"/><stop offset="1" stop-color="#2f4ce0"/>
+        </linearGradient></defs>
+      </svg>
+    </div>
+    <h1>AI 对话</h1>
+    <p class="login-tip">请输入口令（见电脑上 <code>config.json</code> 的 auth.password）</p>
+    <input id="pw" type="password" inputmode="text" autocomplete="current-password" placeholder="登录口令" enterkeyhint="go">
+    <button id="loginBtn" class="btn-primary">进入</button>
+    <div id="loginErr" class="login-err"></div>
+  </div>
+</div>
+
+<!-- ======================= 主界面 ======================= -->
+<div id="app" class="app hidden">
+
+  <!-- 抽屉：会话历史 -->
+  <aside id="drawer" class="drawer">
+    <div class="drawer-head">
+      <!-- 页面（连接）：可手动添加，最初只有内置的那个 -->
+      <div class="conn-head">
+        <span class="conn-title">页面</span>
+        <button id="addConn" class="conn-add" title="添加一个页面（连接别的 AI）">＋ 添加</button>
+      </div>
+      <div id="connList" class="conn-list"></div>
+      <button id="newChat" class="new-btn" title="新建对话">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+        <span>新建对话</span>
+      </button>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" width="15" height="15" class="search-ico"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input id="search" type="search" placeholder="搜索对话">
+      </div>
+    </div>
+    <div id="convList" class="conv-list"></div>
+    <div class="drawer-foot">
+      <button id="openSettings" class="foot-btn">设置</button>
+      <button id="openBackup" class="foot-btn" title="备份 / 导出对话数据">备份</button>
+      <span id="dshDot" class="dot" title="服务连接状态"></span>
+      <span id="dshLabel" class="foot-label">连接中…</span>
+    </div>
+  </aside>
+  <div id="scrim" class="scrim"></div>
+
+  <!-- 主区 -->
+  <main class="main">
+    <header class="topbar">
+      <button id="menuBtn" class="icon-btn" aria-label="历史">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <span id="runSpin" class="run-spin hidden" title="正在生成"></span>
+      <div class="topbar-title">
+        <div id="chatTitle" class="chat-title">AI 对话</div>
+        <div id="chatSub" class="chat-sub">与会话型服务共用记录</div>
+      </div>
+      <button id="newChatTop" class="icon-btn" aria-label="新对话">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </header>
+
+    <div id="loadingBar" class="loading-bar hidden"></div>
+    <div id="connBanner" class="conn-banner hidden"></div>
+    <div id="liveBanner" class="live-banner hidden"></div>
+
+    <div id="messages" class="messages">
+      <!-- 消息从这里渲染；空态欢迎页由 app.js 动态构建 -->
+    </div>
+
+    <div class="composer-wrap">
+      <div id="queueHint" class="queue-hint hidden"></div>
+      <div class="composer">
+        <textarea id="input" rows="1" placeholder="发消息…" enterkeyhint="send"></textarea>
+        <button id="sendBtn" class="send-btn" aria-label="发送">
+          <svg class="ico-send" viewBox="0 0 24 24" width="20" height="20"><path d="M4 12 20 4l-6 16-3.2-6.8L4 12z" fill="currentColor"/></svg>
+          <svg class="ico-stop" viewBox="0 0 24 24" width="18" height="18"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor"/></svg>
+        </button>
+      </div>
+      <div class="composer-foot">Enter 发送 · Shift+Enter 换行</div>
+    </div>
+  </main>
+</div>
+
+<!-- ======================= 设置面板 ======================= -->
+<div id="sheet" class="sheet">
+  <div class="sheet-head">
+    <span>设置</span>
+    <button id="closeSheet" class="icon-btn" aria-label="关闭">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="sheet-body">
+    <div class="chips small set-nav" id="setNav">
+      <button data-go="setBackupSection">备份</button>
+      <button data-go="setAutoBoot">自启动</button>
+      <button data-go="setNetHost">外网访问</button>
+      <button data-go="setCwd">工作目录</button>
+      <button data-go="themeSeg">外观</button>
+    </div>
+
+    <section class="set-group">
+      <h3>外观</h3>
+      <div class="row">
+        <label>主题</label>
+        <div class="seg small" id="themeSeg">
+          <button data-theme="light">浅色</button>
+          <button data-theme="dark">深色</button>
+          <button data-theme="system">跟随系统</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="set-group">
+      <h3>新建对话</h3>
+      <div class="row col">
+        <label>默认工作目录</label>
+        <input id="setCwd" type="text" placeholder="例如 D:\work\项目" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="row col" id="wsChipsRow">
+        <label>已有工作区（点一下填入）</label>
+        <div id="wsChips" class="chips small"></div>
+      </div>
+    </section>
+
+    <details class="set-group" id="setModelSection">
+      <summary>默认模型</summary>
+      <div class="set-details">
+        <div class="row"><label>启用</label><input id="setLocalOn" type="checkbox" class="switch"></div>
+        <div class="row col"><label>Base URL</label><input id="setLocalUrl" type="text" autocapitalize="off" spellcheck="false"></div>
+        <div class="row col"><label>模型名</label><input id="setLocalModel" type="text" autocapitalize="off" spellcheck="false"></div>
+        <div class="row"><label>max_tokens</label><input id="setLocalMax" type="number" min="64" max="32768" step="256"></div>
+        <div class="row"><label>temperature</label><input id="setLocalTemp" type="number" min="0" max="2" step="0.1"></div>
+        <div class="row col"><label>系统提示词</label><textarea id="setLocalSys" rows="3"></textarea></div>
+      </div>
+    </details>
+
+    <section class="set-group">
+      <h3>自启动</h3>
+      <div class="row"><label>随系统登录自动启动</label><input id="setAutoBoot" type="checkbox" class="switch"></div>
+      <p class="hint" id="setAutoBootHint" style="margin-top:-2px"></p>
+      <div class="row col">
+        <label>手动启动</label>
+        <div class="code-inline" id="setNpmCmd">npm start</div>
+      </div>
+    </section>
+
+    <details class="set-group" id="setNetSection">
+      <summary>外网访问</summary>
+      <div class="set-details">
+        <div class="row col">
+          <label>外网地址（可留空）</label>
+          <input id="setPublicUrl" type="text" autocapitalize="off" spellcheck="false" placeholder="https://你的域名/chat/">
+          <p class="hint">只用于显示/自检；外网需先有隧道或端口映射。</p>
+        </div>
+        <div class="row col" id="tunnelUrlRow" style="display:none">
+          <label>检测到的隧道地址</label>
+          <div id="tunnelChips" class="chips small"></div>
+        </div>
+        <div class="row">
+          <label>监听地址</label>
+          <select id="setNetHost">
+            <option value="127.0.0.1">仅本机 127.0.0.1</option>
+            <option value="0.0.0.0">局域网 / 隧道 0.0.0.0</option>
+          </select>
+        </div>
+        <div class="row"><label>端口</label><input id="setNetPort" type="number" min="1" max="65535" step="1"></div>
+        <p class="hint" style="margin-top:-2px">改监听地址或端口要重启服务。</p>
+        <div class="row"><label>连通性自检</label><button id="netCheckBtn" class="btn-ghost">开始自检</button></div>
+        <pre class="hint" id="netCheckOut" style="white-space:pre-wrap;margin-top:0"></pre>
+        <p class="hint" id="setTunnelHint" style="margin-top:-2px"></p>
+      </div>
+    </details>
+
+    <details class="set-group" id="setBackupSection">
+      <summary><span id="backupSummaryText">备份（对话数据）</span></summary>
+      <div class="set-details">
+        <div id="backupConfigRows">
+          <div class="row"><label>自动备份</label><input id="setBackupOn" type="checkbox" class="switch"></div>
+          <div class="row"><label>间隔（小时）</label><input id="setBackupHours" type="number" min="1" max="168" step="1"></div>
+          <div class="row"><label>保留份数</label><input id="setBackupKeep" type="number" min="1" max="200" step="1"></div>
+          <div class="row col">
+            <label>备份目录（绝对路径）</label>
+            <input id="setBackupDir" type="text" autocapitalize="off" spellcheck="false" placeholder="留空 = 数据目录下的 backups">
+          </div>
+          <div class="row col">
+            <label>部署端密码</label>
+            <input id="setDeployPw" type="password" autocomplete="new-password" placeholder="至少 8 位；改设置/导出要验证">
+          </div>
+          <div class="row">
+            <label>操作</label>
+            <div class="seg small">
+              <button id="backupSaveBtn">保存设置</button>
+              <button id="backupRunBtn">立即备份</button>
+            </div>
+          </div>
+          <p class="hint" id="backupHint" style="margin-top:-2px"></p>
+        </div>
+        <div class="row" id="backupExportRow">
+          <button id="backupExportBtn" class="btn-ghost">导出记录（.zip）</button>
+        </div>
+        <div id="backupList" class="backup-list"></div>
+      </div>
+    </details>
+
+    <section class="set-group">
+      <h3>账号</h3>
+      <div class="row"><label>登录状态</label><span id="authState" class="muted">已登录</span></div>
+      <button id="logoutBtn" class="btn-ghost">退出登录</button>
+    </section>
+
+    <div class="ver" id="buildVer">AI 对话 网页版</div>
+  </div>
+</div>
+
+<!-- ======================= 添加 / 编辑页面（连接） ======================= -->
+<div id="connSheet" class="sheet">
+  <div class="sheet-head">
+    <span id="connSheetTitle">添加页面</span>
+    <button id="closeConnSheet" class="icon-btn" aria-label="关闭">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="sheet-body">
+    <p class="hint" style="margin-top:0">页面 = 一条连接。选类型、填地址，保存前可测试。</p>
+
+    <div class="row col">
+      <label>快速填入</label>
+      <div id="presetChips" class="chips small"></div>
+    </div>
+
+    <div class="row col">
+      <label>名称</label>
+      <input id="connName" type="text" placeholder="比如：本机模型 / 我的 DeepSeek" autocapitalize="off" spellcheck="false">
+    </div>
+
+    <div class="row col">
+      <label>类型</label>
+      <div class="seg small" id="connKindSeg">
+        <button data-kind="dsh">会话型服务</button>
+        <button data-kind="openai">OpenAI 兼容</button>
+      </div>
+    </div>
+
+    <div class="row col" id="connUrlRow">
+      <label id="connUrlLabel">服务地址</label>
+      <input id="connUrl" type="text" autocapitalize="off" spellcheck="false" placeholder="http://127.0.0.1:3080">
+      <p class="hint" id="connUrlHint"></p>
+    </div>
+
+    <div class="row col" id="connTokenRow">
+      <label>访问令牌 / Cookie（桌面软件用）</label>
+      <input id="connToken" type="password" autocomplete="off" placeholder="粘贴带 ?token=... 的地址，或令牌 / dsh-auth Cookie">
+      <p class="hint" id="connTokenHint">可选。远程部署才需要令牌；同机桌面软件用下面的本机凭据即可。</p>
+    </div>
+
+    <div class="row" id="connAutoDesktopRow">
+      <label>桌面软件重启后自动跟随日志</label>
+      <input id="connAutoDesktop" type="checkbox" class="switch">
+    </div>
+
+    <div class="row" id="connLocalAuthRow">
+      <label>使用本机 DSH 凭据自动登录（仅本机）</label>
+      <input id="connLocalAuth" type="checkbox" class="switch">
+    </div>
+    <p class="hint" id="connLocalAuthHint" style="margin-top:-4px;display:none">读本机 ~/.dsh 凭据，免令牌；仅本机有效。</p>
+
+    <div class="row col" id="connKeyRow">
+      <label>API Key</label>
+      <input id="connKey" type="password" autocomplete="off" placeholder="本地服务没设密码就留空">
+      <p class="hint" id="connKeyHint"></p>
+    </div>
+
+    <div class="row col" id="connModelRow">
+      <label>模型名</label>
+      <input id="connModel" type="text" autocapitalize="off" spellcheck="false" placeholder="比如 本机模型 / deepseek-chat">
+    </div>
+
+    <div class="row" id="connOpenRow">
+      <label>启动时默认打开这个页面</label>
+      <input id="connAutoOpen" type="checkbox" class="switch">
+    </div>
+
+    <div class="row" id="connTestRow">
+      <button id="connTestBtn" class="btn-ghost">测试连接</button>
+      <button id="connDiscoverBtn" class="btn-ghost">检测本机 DSH</button>
+      <span id="connTestOut" class="muted small"></span>
+    </div>
+
+    <button id="connSave" class="btn-primary">保存</button>
+    <button id="connDelete" class="btn-ghost" style="margin-top:8px">删除这个页面</button>
+  </div>
+</div>
+
+<!-- ======================= 会话操作面板 ======================= -->
+<div id="convSheet" class="sheet">
+  <div class="sheet-head">
+    <span>会话</span>
+    <button id="closeConvSheet" class="icon-btn" aria-label="关闭">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="sheet-body">
+    <p class="hint" id="convSheetName" style="margin-top:0"></p>
+    <button id="convRename" class="btn-ghost">重命名</button>
+    <button id="convArchive" class="btn-ghost" style="margin-top:8px">归档（从列表隐藏，DSH 里也隐藏）</button>
+    <button id="convUnarchive" class="btn-ghost" style="margin-top:8px">取消归档</button>
+    <button id="convDelete" class="btn-ghost" style="margin-top:8px">删除</button>
+    <p class="hint" id="convDeleteHint" style="margin-top:8px"></p>
+  </div>
+</div>
+
+<!-- ======================= 导出记录 ======================= -->
+<div id="exportSheet" class="sheet">
+  <div class="sheet-head">
+    <span>导出记录</span>
+    <button id="closeExportSheet" class="icon-btn" aria-label="关闭">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="sheet-body">
+    <p class="hint" id="exportName" style="margin-top:0"></p>
+    <div class="row col">
+      <label>部署端密码</label>
+      <input id="exportPw" type="password" autocomplete="current-password" placeholder="部署端设置的密码">
+    </div>
+    <p class="hint" id="exportErr" style="color:var(--danger)"></p>
+    <button id="exportGo" class="btn-primary">导出</button>
+  </div>
+</div>
+
+<!-- ======================= 新建对话面板 ======================= -->
+<div id="newSheet" class="sheet">
+  <div class="sheet-head">
+    <span>新建对话</span>
+    <button id="closeNewSheet" class="icon-btn" aria-label="关闭">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="sheet-body">
+    <div class="row col">
+      <label>Agent 工作目录</label>
+      <input id="newCwd" type="text" autocapitalize="off" spellcheck="false" placeholder="例如 D:\work\项目">
+      <p class="hint">它决定这个新会话里的 Agent 在哪个文件夹里读写文件、跑命令。留空用默认目录。</p>
+    </div>
+    <div class="row col">
+      <label>快速选择</label>
+      <div id="newCwdChips" class="chips small"></div>
+    </div>
+    <button id="doCreate" class="btn-primary">创建并进入</button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="./app.js"></script>
+</body>
+</html>
