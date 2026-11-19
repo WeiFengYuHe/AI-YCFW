@@ -1,0 +1,49 @@
+{
+  "name": "dsh-ycfw",
+  "version": "0.5.0",
+  "description": "通用 AI 对话网页端（零依赖）：可为本地部署的会话型 AI（含 DSH 0.1/0.2 与桌面软件）或任意 OpenAI 兼容服务提供手机/多端聊天页，支持会话归档、备份提取与外网自检。",
+  "type": "module",
+  "bin": {
+    "dsh-ycfw": "bin/dsh-ycfw.mjs"
+  },
+  "scripts": {
+    "start": "node bin/dsh-ycfw.mjs",
+    "serve": "node bin/dsh-ycfw.mjs --no-open",
+    "stop": "node bin/dsh-ycfw.mjs stop",
+    "status": "node bin/dsh-ycfw.mjs status",
+    "autostart:on": "node bin/dsh-ycfw.mjs autostart on",
+    "autostart:off": "node bin/dsh-ycfw.mjs autostart off",
+    "check": "node --check server/server.mjs && node --check server/web/app.js && node --check server/lib/dsh.mjs && node --check server/lib/dsh2.mjs && node --check server/lib/ws.mjs && node --check server/lib/zip.mjs && node --check server/lib/store.mjs && node --check bin/dsh-ycfw.mjs",
+    "test": "node tools/测试接口.mjs",
+    "dist": "node scripts/build-dist.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin/",
+    "server/",
+    "tools/",
+    "scripts/",
+    "config.example.json",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "SECURITY.md",
+    "CONTRIBUTING.md"
+  ],
+  "keywords": [
+    "chat",
+    "chat-ui",
+    "web-ui",
+    "self-hosted",
+    "local-llm",
+    "openai-compatible",
+    "ollama",
+    "llama.cpp",
+    "agent",
+    "pwa"
+  ],
+  "license": "MIT",
+  "author": "DSH-YCFW contributors"
+}

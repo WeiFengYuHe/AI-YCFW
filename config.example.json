@@ -1,0 +1,38 @@
+{
+  "port": 8100,
+  "host": "127.0.0.1",
+  "auth": {
+    "password": "",
+    "sessionDays": 30,
+    "apiKey": ""
+  },
+  "dsh": {
+    "baseUrl": "",
+    "defaultCwd": "",
+    "newSessionPreset": ""
+  },
+  "local": {
+    "enabled": false,
+    "baseUrl": "",
+    "apiKey": "",
+    "model": "",
+    "maxTokens": 4096,
+    "temperature": 0.7,
+    "systemPrompt": "",
+    "historyCharBudget": 24000
+  },
+  "connections": [],
+  "ui": {
+    "appName": "AI 对话",
+    "publicUrl": ""
+  },
+  "backup": {
+    "enabled": true,
+    "intervalHours": 6,
+    "keep": 30,
+    "dir": "",
+    "passwordSalt": "",
+    "passwordHash": "",
+    "lastRunAt": 0
+  }
+}
